@@ -27,7 +27,25 @@ pip install torch sentencepiece
 huggingface-cli download uixova/vexira vexira_sft.pt vexira_spm.model --local-dir models/
 ```
 
-Sonrası tek satır:
+**Terminal bilmiyorsan** — çift tıkla, menü açılır:
+
+```
+./vexira.sh      Linux / macOS
+vexira.bat       Windows (çift tık)
+vexira.ps1       Windows PowerShell
+```
+
+```
+ 1  Metin çevir   EN → TR       4  Dosya çevir   TR → EN
+ 2  Metin çevir   TR → EN       5  Tarayıcı arayüzü
+ 3  Dosya çevir   EN → TR       q  çıkış
+```
+
+Çıktı hem ekrana basılır hem diske yazılır (`ceviriler/` altına, dosya
+çevirisinde kaynağın yanına `dosya.tr.txt` olarak). Model bir kez yüklenir,
+menü boyunca bellekte kalır.
+
+Komut satırını tercih edersen tek satır:
 
 ```bash
 # Metin
@@ -348,6 +366,8 @@ evaluate.py         FLORES BLEU/chrF++ + terim tutarlılığı ölçümü
 tokenizer.py        SentencePiece sarmalayıcı, özel token mantığı
 config.py           mimari
 model.py            Vexira (enc-dec, RMSNorm, SwiGLU, KV cache)
+vexira.sh/.bat/.ps1 çift tıkla menü (terminal bilmeyene)
+menu.py             menünün kendisi
 webui.py            tarayıcı arayüzü (tek komut, bağımlılık yok)
 examples/minimal.py modeli en az kodla çalıştırma (~40 satır)
 samples/            örnek girdi (TR + EN, kolaydan zora)

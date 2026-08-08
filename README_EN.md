@@ -27,7 +27,25 @@ pip install torch sentencepiece
 huggingface-cli download uixova/vexira vexira_sft.pt vexira_spm.model --local-dir models/
 ```
 
-Then one line:
+**No terminal experience needed** — double-click for a menu:
+
+```
+./vexira.sh      Linux / macOS
+vexira.bat       Windows (double-click)
+vexira.ps1       Windows PowerShell
+```
+
+```
+ 1  Translate text   EN → TR     4  Translate file   TR → EN
+ 2  Translate text   TR → EN     5  Browser UI
+ 3  Translate file   EN → TR     q  quit
+```
+
+Output is both printed and written to disk (into `ceviriler/`, or next to the
+source as `file.tr.txt` for file translation). The model loads once and stays
+in memory for the whole session.
+
+If you prefer the command line:
 
 ```bash
 # Text
@@ -356,6 +374,8 @@ evaluate.py         FLORES BLEU/chrF++ and term-consistency measurement
 tokenizer.py        SentencePiece wrapper, special-token logic
 config.py           architecture
 model.py            Vexira (enc-dec, RMSNorm, SwiGLU, KV cache)
+vexira.sh/.bat/.ps1 double-click menu (no terminal needed)
+menu.py             the menu itself
 webui.py            browser UI (one command, no dependency)
 examples/minimal.py run the model with the least possible code (~40 lines)
 samples/            sample input (TR + EN, easy to hard)

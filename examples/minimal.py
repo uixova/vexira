@@ -49,8 +49,15 @@ def load(ckpt=CKPT, spm=SPM):
 
 
 @torch.no_grad()
-def translate(model, tok, cfg, text, to="tr", domain="sub", max_new=128):
-    """Greedy decode. Tek cümle için beam ile fark küçük."""
+def translate(model, tok, cfg, text, to="tr", domain="doc", max_new=128):
+    """Greedy decode. Tek cümle için beam ile fark küçük.
+
+    domain="doc" varsayılan: serbest metin için doğrusu bu. "sub" altyazı
+    DOSYASI içindir; orada model kısa selamlamayı iki konuşmacılı diyaloğa
+    çeviriyor ("Good morning." -> "Günaydın. - Günaydın."), çünkü OpenSubtitles
+    verisinde iki replik tek satırda geçiyor. translate.py bunu ayrıca
+    onarıyor; burada doğru alanı seçmek yetiyor.
+    """
     src = torch.tensor([tok.encode_source(text, to, domain=domain,
                                           max_len=128)])
     mem = model.encode(src)                      # encoder BİR KEZ koşar

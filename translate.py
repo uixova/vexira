@@ -81,9 +81,30 @@ _ESCAPE_FIX = re.compile(r"\\\s+([nrt])")
 _PH_OUT = re.compile(r"(\{[^{}]*\}|%[-0-9.]*[A-Za-z]|\[[^\[\]]*\])")
 
 
+# Altyazı korpusu artefaktı: OpenSubtitles'ta iki konuşmacı tek satırda geçiyor
+#     - Günaydın.
+#     - Günaydın.
+# Model bu yüzden <sub> alanında kısa selamlamayı karşılıklı diyalog sanıyor:
+#     "Good morning."  ->  "Günaydın. - Günaydın."
+# Ölçüldü: 400 FLORES cümlesinde 0 kez, yalnız 1-3 kelimelik ünlemlerde.
+# Dar ama gerçek; kaynak zaten tekrar İÇERMİYORSA güvenle sadeleştirilir.
+_DUP = re.compile(r"^(.{2,40}?)\s*(?:[-–—]\s*)?\1$")
+
+
+def _collapse_dup(src, out):
+    s = out.strip()
+    m = _DUP.match(s)
+    if not m:
+        return out
+    if _DUP.match(src.strip()):      # kaynak da tekrarlıysa çeviri doğru
+        return out
+    return m.group(1)
+
+
 def repair_output(src, out):
     """Kaçış dizilerini birleştir, yer tutucuları kaynaktakiyle eşitle."""
     out = _ESCAPE_FIX.sub(r"\\\1", out)
+    out = _collapse_dup(src, out)
     a, b = _PH_OUT.findall(src), _PH_OUT.findall(out)
     # Yalnız SAYI ve SIRA aynıysa konumsal geri yazma yapılır. Sayı tutmuyorsa
     # model bir tanesini tamamen düşürmüş demektir; hangisinin nereye geleceği
