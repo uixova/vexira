@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+
+# Model ağırlıkları GitHub'a girmez — Hugging Face'ten inecek (bkz. README)
+models/*.pt
+models/*.model
+remote_out/
+
+# Yerel çıktılar
+*.log
+*.tmp
+*.bak

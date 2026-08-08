@@ -1,0 +1,61 @@
+# Vexira örnek girdi — İngilizce  (EN -> TR)
+#
+# Bu dosyayı doğrudan modele verebilirsin:
+#     python translate.py --file samples/sample_en.txt --to tr --domain doc
+#     python translate.py --file samples/sample_en.txt --to tr --domain ui
+#
+# '#' ile başlayan satırlar yorumdur, çeviriye girmez.
+# Bölümler kolaydan zora doğru sıralı; modelin nerede zorlandığını görürsün.
+
+# --- 1. Kısa arayüz etiketleri (domain: ui) -------------------------------
+Save
+Cancel
+Auto Save
+Text Speed
+High Contrast Text
+Restore Defaults
+Are you sure you want to quit?
+
+# --- 2. Yer tutuculu arayüz metni (aynen korunmalı) -----------------------
+Page {} of {}
+Load slot %s: [text]
+{#month}November
+Saved screenshot as %s.
+Image [index] of [count] locked.
+Windows 11 is required to run this game.
+
+# --- 3. Altyazı satırları (domain: sub) -----------------------------------
+Hey, wait for me!
+I told you it wouldn't work.
+Come on, we're going to be late.
+Did you really think I wouldn't notice?
+He's been standing there for twenty minutes.
+
+# --- 4. Çok anlamlı kelimeler (bağlam çözecek) ----------------------------
+He works at the bank.
+I went to the river bank to think.
+She plays the piano every evening.
+The children play in the garden after school.
+The company will match your contribution.
+It was a close match until the final minute.
+
+# --- 5. Günlük düzyazı ----------------------------------------------------
+The rain fell softly on the old wooden roof while the family gathered inside.
+Nobody spoke for a long time, and the candle on the table kept flickering.
+She opened the letter carefully, as if the paper might tear at a single touch.
+Somewhere far away a dog barked twice, then the night went quiet again.
+
+# --- 6. Teknik / haber dili ----------------------------------------------
+The committee approved the proposal after three hours of debate.
+Researchers found that the new method reduces memory usage by nearly half.
+The update will be rolled out gradually over the next two weeks.
+According to the report, exports rose by 4.2 percent compared to last year.
+
+# --- 7. Uzun paragraf (128 token üstü — bölünüp birleştirilecek) ----------
+The old library stood at the edge of the square, its windows dark for most of the year. Visitors came rarely, and when they did they moved quietly between the shelves. The librarian knew every book by its place rather than its title, and she could find any of them without looking up. In winter the radiators clanked and the room smelled faintly of dust and paper. Children who wandered in by accident usually stayed longer than they planned. Nobody could say exactly when the building had been put up, but everyone agreed it had always been there.
+
+# --- 8. Zor yapılar -------------------------------------------------------
+Had I known earlier, I would have said something.
+Not only did she finish first, but she also broke the record.
+What he meant, though he never said it plainly, was that he wanted to leave.
+The thing about old houses is that they never quite stop settling.

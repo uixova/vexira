@@ -1,0 +1,59 @@
+# Vexira örnek girdi — Türkçe  (TR -> EN)
+#
+# Bu dosyayı doğrudan modele verebilirsin:
+#     python translate.py --file samples/sample_tr.txt --to en --domain doc
+#
+# '#' ile başlayan satırlar yorumdur, çeviriye girmez.
+# Bölümler kolaydan zora doğru sıralı.
+
+# --- 1. Kısa arayüz etiketleri --------------------------------------------
+Kaydet
+İptal
+Otomatik Kayıt
+Metin Hızı
+Yüksek Karşıtlıklı Metin
+Varsayılanlara Dön
+Çıkmak istediğinize emin misiniz?
+
+# --- 2. Yer tutuculu metin (aynen korunmalı) ------------------------------
+Sayfa {} / {}
+%s yuvasını yükle: [text]
+Ekran görüntüsü %s olarak kaydedildi.
+Bu oyunu çalıştırmak için Windows 11 gereklidir.
+
+# --- 3. Altyazı satırları -------------------------------------------------
+Hey, beni bekle!
+Sana olmayacağını söylemiştim.
+Hadi ama, geç kalacağız.
+Fark etmeyeceğimi mi sandın gerçekten?
+Yirmi dakikadır orada dikiliyor.
+
+# --- 4. Türkçe'ye özgü zorluklar ------------------------------------------
+# çekim eki zinciri, ünlü uyumu, sondan eklemeli yapı
+Kitaplarımızdan birini masanın üstünde unutmuşum.
+Gidebileceğimiz en yakın yer buradan iki saat uzaklıkta.
+Anlatabildiklerimden çok anlatamadıklarım vardı.
+Evden çıkarken kapıyı kilitlemeyi unutma.
+Görüşemeyeceğimizi öğrenince çok üzüldü.
+
+# --- 5. Günlük düzyazı ----------------------------------------------------
+Yağmur eski ahşap çatıya yumuşak bir şekilde düşerken aile içeride toplanmıştı.
+Kimse uzun süre konuşmadı, masadaki mum titremeye devam etti.
+Mektubu dikkatle açtı, sanki kâğıt tek dokunuşta yırtılacakmış gibi.
+Uzaklarda bir köpek iki kez havladı, sonra gece yeniden sessizleşti.
+
+# --- 6. Teknik / haber dili -----------------------------------------------
+Komisyon, üç saatlik tartışmanın ardından teklifi onayladı.
+Araştırmacılar yeni yöntemin bellek kullanımını neredeyse yarıya indirdiğini buldu.
+Güncelleme önümüzdeki iki hafta içinde kademeli olarak yayılacak.
+Rapora göre ihracat geçen yıla kıyasla yüzde 4,2 arttı.
+
+# --- 7. Uzun paragraf (bölünüp birleştirilecek) ---------------------------
+Eski kütüphane meydanın kenarında duruyordu ve pencereleri yılın çoğunda karanlıktı. Ziyaretçiler seyrek gelirdi, geldiklerinde de raflar arasında sessizce dolaşırlardı. Kütüphaneci her kitabı adından çok durduğu yerden tanırdı ve hiçbirine bakmadan bulabilirdi. Kışın kaloriferler tıkırdar, oda hafifçe toz ve kâğıt kokardı. Yanlışlıkla içeri giren çocuklar genellikle planladıklarından uzun kalırdı. Binanın tam olarak ne zaman yapıldığını kimse söyleyemezdi ama herkes onun hep orada olduğunda hemfikirdi.
+
+# --- 8. Deyim ve devrik yapı ----------------------------------------------
+Bilseydim daha önce bir şey söylerdim.
+Sadece birinci olmakla kalmadı, rekoru da kırdı.
+Demek istediği, açıkça söylemese de, gitmek istediğiydi.
+Eski evlerin bir huyu vardır, hiç oturmayı bitirmezler.
+Ne yaptığını bilmeden konuşuyordu.

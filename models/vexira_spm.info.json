@@ -1,0 +1,31 @@
+{
+  "vocab": 32000,
+  "sha": "5731600765a79711",
+  "model_type": "unigram",
+  "user_symbols": [
+    "<2tr>",
+    "<2en>",
+    "<ctx>",
+    "<sub>",
+    "<ocr>",
+    "<ui>",
+    "<doc>",
+    "<stt>",
+    "<tts>",
+    "<nl>",
+    "<keep_start>",
+    "<keep_end>",
+    "<reserved_0>",
+    "<reserved_1>",
+    "<reserved_2>",
+    "<reserved_3>",
+    "<reserved_4>",
+    "<reserved_5>",
+    "<reserved_6>",
+    "<reserved_7>"
+  ],
+  "fertility": {
+    "en": 1.948,
+    "tr": 2.237
+  }
+}

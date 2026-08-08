@@ -1,0 +1,9 @@
+# Vexira — çıkarım için gereken her şey
+#
+# Sistem bağımlılığı YOK. Masaüstü ortamı, ekran sunucusu, harici servis
+# gerekmez; saf metin -> metin.
+torch>=2.0
+sentencepiece>=0.1.99
+
+# --- yalnız değerlendirme için (çıkarımda gerekmez) ---
+# sacrebleu>=2.3        # python evaluate.py
