@@ -117,6 +117,51 @@ translate.py  (glossary + --domain ui)        -> "Oluşturucu başlatılamadı."
 So the minimal file answers "how do I call the model"; the glossary layer is
 what delivers the quality.
 
+### Integrating into your own project
+
+If you are wiring Vexira into a pipeline of your own (another LLM, OCR, a
+subtitle tool) you do not need to read the 650 lines of `translate.py`. The
+only thing you take from it is `Translator`:
+
+```python
+from translate import Translator
+
+tr = Translator()                                    # load the model ONCE
+out = tr.translate(lines, tgt_lang="tr", domain="ui")
+```
+
+Those three lines bring everything: glossary, placeholder repair, duplication
+collapse, splitting above 128 tokens, batching, the right thread count.
+**`Translator` is the integration API**; `examples/minimal.py` is the teaching
+version that shows what happens inside — do not use it in production, the
+repairs are not there.
+
+Full working example: [`examples/integrate.py`](examples/integrate.py) —
+batching, domain choice, stats, your own glossary, reading the rules, and
+non-Python usage.
+
+**The repair rules ship inside the model too.** The defects come from this
+model's training data, so the rules travel with it:
+
+```python
+tr.pp                 # rules loaded from the checkpoint
+ck["postprocess"]     # raw form — JSON, readable from Rust/JS/C++ as well
+```
+
+So anyone running the model on another stack does not have to rediscover the
+same defects.
+
+**From outside Python** — call `--server` as a subprocess; the model loads once:
+
+```bash
+python translate.py --server
+# {"lines":["Hello"],"to":"tr","domain":"ui"}
+# -> {"ok":true,"out":["Merhaba"],"ms":23.1}
+```
+
+**One rule for speed:** pass lines in a **single call**, not one at a time in a
+loop. 62 ms/line instead of 139.
+
 ### Runtime settings ship inside the model
 
 The right thread/beam values are model-specific and were found by measurement —
@@ -377,7 +422,8 @@ model.py            Vexira (enc-dec, RMSNorm, SwiGLU, KV cache)
 vexira.sh/.bat/.ps1 double-click menu (no terminal needed)
 menu.py             the menu itself
 webui.py            browser UI (one command, no dependency)
-examples/minimal.py run the model with the least possible code (~40 lines)
+examples/integrate.py  wiring it into your own project (INTEGRATION API)
+examples/minimal.py run the model with the least possible code (~40 lines, teaching)
 samples/            sample input (TR + EN, easy to hard)
 models/             weights (downloaded from Hugging Face)
 training/           training side — not needed to use the model

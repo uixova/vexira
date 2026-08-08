@@ -116,6 +116,51 @@ translate.py  (sözlük + --domain ui)          -> "Oluşturucu başlatılamadı
 Yani minimal sürüm "modeli nasıl çağırırım"ın cevabı; kaliteyi sözlük katmanı
 veriyor.
 
+### Kendi projene bağlama
+
+Vexira'yı tek başına kullanmak yerine kendi boru hattına (başka bir LLM, OCR,
+altyazı aracı) takacaksan `translate.py`'nin 650 satırını okuman gerekmez.
+Ondan aldığın tek şey `Translator`:
+
+```python
+from translate import Translator
+
+tr = Translator()                                    # modeli BİR KEZ yükle
+out = tr.translate(lines, tgt_lang="tr", domain="ui")
+```
+
+Bu üç satır her şeyi getirir: sözlük, yer tutucu onarımı, tekrar sadeleştirme,
+128 token üstü bölme, toplu iş, doğru thread sayısı. **`Translator` entegrasyon
+arayüzüdür**; `examples/minimal.py` ise "içeride ne oluyor"u gösteren öğretici
+sürüm — üretimde onu kullanma, onarımlar orada yok.
+
+Çalışan tam örnek: [`examples/integrate.py`](examples/integrate.py) — toplu iş,
+domain seçimi, istatistik, kendi terim sözlüğün, kural okuma, Python dışı
+kullanım.
+
+**Onarım kuralları da modelin içinde.** Kusurlar bu modelin eğitim verisinden
+geliyor, o yüzden kurallar da modelle taşınıyor:
+
+```python
+tr.pp                 # checkpoint'ten gelen kurallar
+ck["postprocess"]     # ham hâli — JSON, Rust/JS/C++ tarafından da okunabilir
+```
+
+Böylece modeli başka bir dilde çalıştıran kişi aynı kusurları yeniden
+keşfetmek zorunda kalmaz.
+
+**Python dışından** — `--server` alt süreç olarak çağrılır, model bir kez
+yüklenir:
+
+```bash
+python translate.py --server
+# {"lines":["Hello"],"to":"tr","domain":"ui"}
+# -> {"ok":true,"out":["Merhaba"],"ms":23.1}
+```
+
+**Hız için tek kural:** satırları döngüde tek tek değil, **tek çağrıda** ver.
+139 ms/satır yerine 62 ms/satır.
+
 ### Çalışma ayarları modelin içinde
 
 Doğru thread/beam değerleri modele özgü ve ölçümle bulundu — kullanıcının bunu
@@ -369,7 +414,8 @@ model.py            Vexira (enc-dec, RMSNorm, SwiGLU, KV cache)
 vexira.sh/.bat/.ps1 çift tıkla menü (terminal bilmeyene)
 menu.py             menünün kendisi
 webui.py            tarayıcı arayüzü (tek komut, bağımlılık yok)
-examples/minimal.py modeli en az kodla çalıştırma (~40 satır)
+examples/integrate.py  kendi projene bağlama (ENTEGRASYON ARAYÜZÜ)
+examples/minimal.py modeli en az kodla çalıştırma (~40 satır, öğretici)
 samples/            örnek girdi (TR + EN, kolaydan zora)
 models/             ağırlıklar (Hugging Face'ten iner)
 training/           eğitim tarafı — kullanmak için gerekmez

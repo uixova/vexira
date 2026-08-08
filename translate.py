@@ -77,8 +77,50 @@ DEFAULT_CKPT = "models/vexira_sft.pt"
 #                         bulamaz, oyun bozulur.
 # İkisi de HER ZAMAN hatadır (geçerli bir çıktı bu biçimde olamaz), o yüzden
 # onarım güvenli ve varsayılan olarak açık.
-_ESCAPE_FIX = re.compile(r"\\\s+([nrt])")
-_PH_OUT = re.compile(r"(\{[^{}]*\}|%[-0-9.]*[A-Za-z]|\[[^\[\]]*\])")
+# Bu kurallar VERİ olarak checkpoint'e de gömülür (ck["postprocess"]).
+# Sebebi: kusurlar BU MODELİN eğitim verisinden geliyor (altyazı korpusundaki
+# iki-konuşmacı satırları, arayüz metnindeki yer tutucular). Kural modelle
+# birlikte gitmezse, modeli başka bir dilde/altyapıda çalıştıran kişi aynı
+# kusurları yeniden keşfetmek zorunda kalır. Bunlar KOD değil, bildirimsel
+# desen — JSON'a yazılıp Rust/JS/C++ tarafından da okunabilir.
+POSTPROCESS_DEFAULTS = {
+    "escape_fix": {
+        "pattern": r"\\\s+([nrt])", "repl": r"\\\1",
+        "why": "SentencePiece kacis dizisini boluyor: \\n -> \\ n",
+    },
+    "placeholder": {
+        "pattern": r"(\{[^{}]*\}|%[-0-9.]*[A-Za-z]|\[[^\[\]]*\])",
+        "why": "model degisken ADINI ceviriyor: [text] -> [metin]",
+    },
+    "collapse_dup": {
+        "pattern": r"^(.{2,40}?)\s*(?:[-–—]\s*)?\1$",
+        "why": "altyazi korpusunda iki konusmaci tek satirda: "
+               "'Good morning.' -> 'Gunaydin. - Gunaydin.'",
+    },
+    "sentence_split": {"pattern": r"(?<=[.!?…:;])\s+", "ctx_allow": 48},
+}
+
+
+def load_postprocess(ck_pp=None):
+    """Checkpoint'teki kuralları derle; eksikse koddaki varsayılana düş."""
+    src = dict(POSTPROCESS_DEFAULTS)
+    for k, v in (ck_pp or {}).items():
+        if isinstance(v, dict) and v.get("pattern"):
+            src[k] = v
+    out = {}
+    for k, v in src.items():
+        try:
+            out[k] = dict(v, rx=re.compile(v["pattern"]))
+        except re.error as e:                                     # noqa: PERF203
+            # Bozuk desen çıkarımı durdurmasın; o kural atlanır.
+            print(f"[uyarı] postprocess '{k}' derlenemedi ({e}) — atlandı",
+                  file=sys.stderr)
+    return out
+
+
+_PP = load_postprocess()
+_ESCAPE_FIX = _PP["escape_fix"]["rx"]
+_PH_OUT = _PP["placeholder"]["rx"]
 
 
 # Altyazı korpusu artefaktı: OpenSubtitles'ta iki konuşmacı tek satırda geçiyor
@@ -88,30 +130,34 @@ _PH_OUT = re.compile(r"(\{[^{}]*\}|%[-0-9.]*[A-Za-z]|\[[^\[\]]*\])")
 #     "Good morning."  ->  "Günaydın. - Günaydın."
 # Ölçüldü: 400 FLORES cümlesinde 0 kez, yalnız 1-3 kelimelik ünlemlerde.
 # Dar ama gerçek; kaynak zaten tekrar İÇERMİYORSA güvenle sadeleştirilir.
-_DUP = re.compile(r"^(.{2,40}?)\s*(?:[-–—]\s*)?\1$")
+_DUP = _PP["collapse_dup"]["rx"]
 
 
-def _collapse_dup(src, out):
+def _collapse_dup(src, out, pp=None):
+    rx = (pp or _PP)["collapse_dup"]["rx"]
     s = out.strip()
-    m = _DUP.match(s)
+    m = rx.match(s)
     if not m:
         return out
-    if _DUP.match(src.strip()):      # kaynak da tekrarlıysa çeviri doğru
+    if rx.match(src.strip()):      # kaynak da tekrarlıysa çeviri doğru
         return out
     return m.group(1)
 
 
-def repair_output(src, out):
-    """Kaçış dizilerini birleştir, yer tutucuları kaynaktakiyle eşitle."""
-    out = _ESCAPE_FIX.sub(r"\\\1", out)
-    out = _collapse_dup(src, out)
-    a, b = _PH_OUT.findall(src), _PH_OUT.findall(out)
+def repair_output(src, out, pp=None):
+    """Kaçış dizilerini birleştir, yer tutucuları kaynaktakiyle eşitle,
+    tekrarı sadeleştir. pp verilmezse koddaki varsayılan kurallar kullanılır."""
+    pp = pp or _PP
+    out = pp["escape_fix"]["rx"].sub(pp["escape_fix"].get("repl", r"\\\1"), out)
+    out = _collapse_dup(src, out, pp)
+    ph = pp["placeholder"]["rx"]
+    a, b = ph.findall(src), ph.findall(out)
     # Yalnız SAYI ve SIRA aynıysa konumsal geri yazma yapılır. Sayı tutmuyorsa
     # model bir tanesini tamamen düşürmüş demektir; hangisinin nereye geleceği
     # belirsiz olduğu için dokunulmaz (yanlış yere koymak sessiz bozulmadır).
     if a and len(a) == len(b) and a != b:
         it = iter(a)
-        out = _PH_OUT.sub(lambda m: next(it), out)
+        out = ph.sub(lambda m: next(it), out)
     return out
 
 
@@ -188,11 +234,11 @@ def trained_positions(pos_weight, floor=0.25):
     return int(live[-1]) + 1 if len(live) else int(pos_weight.shape[0])
 
 
-_SENT_SPLIT = re.compile(r"(?<=[.!?…:;])\s+")
+_SENT_SPLIT = _PP["sentence_split"]["rx"]
 
 # Bölünen parçalara verilecek <ctx> için ayrılan token bütçesi.
 # Parçalar bu kadar daha kısa kesilir; toplam yine tavanın altında kalır.
-CTX_ALLOW = 48
+CTX_ALLOW = POSTPROCESS_DEFAULTS["sentence_split"]["ctx_allow"]
 
 
 def split_to_budget(text, measure, budget):
@@ -310,6 +356,8 @@ class Translator:
 
         # Modele gömülü çalışma ayarları (thread/beam/batch). Yoksa varsayılan.
         self.runtime = resolve_runtime(ck.get("runtime"))
+        # Onarım kuralları da modelden gelir; yoksa koddaki varsayılan.
+        self.pp = load_postprocess(ck.get("postprocess"))
         self.info = {"step": ck.get("step"), "best_val": ck.get("best_val"),
                      "params": self.model.num_params(),
                      "glossary": len(self.gloss),
