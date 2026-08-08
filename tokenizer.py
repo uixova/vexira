@@ -56,7 +56,14 @@ def _c2b(text, ci):
 
 class VexiraTokenizer:
     def __init__(self, model_path=DEFAULT_MODEL):
-        import sentencepiece as spm
+        try:
+            import sentencepiece as spm
+        except ImportError:
+            # Otomatik kurmuyoruz (bkz. translate.py:_need) — komutu söylüyoruz.
+            raise SystemExit(
+                "\n[eksik] 'sentencepiece' kurulu değil.\n\n"
+                "    pip install sentencepiece\n\n"
+                "Tümü birden:  pip install -r requirements.txt\n")
         if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"tokenizer bulunamadı: {model_path}\n"

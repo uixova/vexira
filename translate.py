@@ -36,7 +36,27 @@ import re
 import sys
 import time
 
-import torch
+
+def _need(pkg, pip_name=None, extra=""):
+    """Eksik bağımlılıkta ham traceback yerine ne yapılacağını söyle.
+
+    OTOMATİK KURMUYORUZ, bilinçli: betik içinden pip çalıştırmak kullanıcının
+    ortamını habersiz değiştirir, yanlış torch derlemesi çekebilir (CPU 200 MB
+    / CUDA 2.5 GB), internet ister — "tamamen yerel" iddiasıyla çelişir — ve
+    Arch/Debian'da PEP 668 zaten engeller. Kararı kullanıcı verir; bize düşen
+    komutu net söylemek.
+    """
+    import importlib
+    try:
+        return importlib.import_module(pkg)
+    except ImportError:
+        sys.exit(f"\n[eksik] '{pkg}' kurulu değil.\n\n"
+                 f"    pip install {pip_name or pkg}\n\n"
+                 f"{extra}Tümü birden:  pip install -r requirements.txt\n")
+
+
+torch = _need("torch", "torch",
+              "CPU sürümü yeterli, GPU gerekmiyor (~200 MB).\n")
 
 from config import VexiraConfig
 from glossary import Glossary
