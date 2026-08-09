@@ -44,7 +44,7 @@ vexira.ps1       Windows         — sağ tık > "Run with PowerShell"
  3  Dosya çevir   EN → TR       q  çıkış
 ```
 
-Çıktı hem ekrana basılır hem diske yazılır (`ceviriler/` altına, dosya
+Çıktı hem ekrana basılır hem diske yazılır (`translate/` altına, dosya
 çevirisinde kaynağın yanına `dosya.tr.txt` olarak). Model bir kez yüklenir,
 menü boyunca bellekte kalır.
 

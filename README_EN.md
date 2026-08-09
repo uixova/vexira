@@ -44,7 +44,7 @@ vexira.ps1       Windows         — right-click > "Run with PowerShell"
  3  Translate file   EN → TR     q  quit
 ```
 
-Output is both printed and written to disk (into `ceviriler/`, or next to the
+Output is both printed and written to disk (into `translate/`, or next to the
 source as `file.tr.txt` for file translation). The model loads once and stays
 in memory for the whole session.
 

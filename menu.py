@@ -44,8 +44,8 @@ def out_path(src_path, to):
 
 
 def save_text(lines, to):
-    os.makedirs("ceviriler", exist_ok=True)
-    p = os.path.join("ceviriler", f"ceviri_{to}_{time.strftime('%Y%m%d_%H%M%S')}.txt")
+    os.makedirs("translate", exist_ok=True)
+    p = os.path.join("translate", f"ceviri_{to}_{time.strftime('%Y%m%d_%H%M%S')}.txt")
     with open(p, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return p
