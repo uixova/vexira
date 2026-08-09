@@ -30,10 +30,13 @@ huggingface-cli download uixova/vexira vexira_sft.pt vexira_spm.model --local-di
 **Terminal bilmiyorsan** — çift tıkla, menü açılır:
 
 ```
-./vexira.sh      Linux / macOS
-vexira.bat       Windows (çift tık)
-vexira.ps1       Windows PowerShell
+./vexira.sh      Linux / macOS   — çift tık, kendi terminalini açar
+vexira.bat       Windows         — çift tık
+vexira.ps1       Windows         — sağ tık > "Run with PowerShell"
 ```
+
+> `.ps1` çift tıklanınca Not Defteri'nde açılır (Windows'un varsayılanı).
+> Çift tıklama istiyorsan `vexira.bat` kullan.
 
 ```
  1  Metin çevir   EN → TR       4  Dosya çevir   TR → EN

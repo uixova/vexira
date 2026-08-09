@@ -1,23 +1,29 @@
 @echo off
-REM Vexira - tek tikla ceviri menusu  (Windows, cift tikla calisir)
+REM Vexira - tek tikla ceviri menusu  (Windows)
+REM Cift tikla calisir; .bat zaten kendi konsol penceresini acar.
 REM PowerShell tercih edersen: vexira.ps1
 
 chcp 65001 >nul
 cd /d "%~dp0"
+title Vexira - TR / EN ceviri
 
-where python >nul 2>&1
-if errorlevel 1 (
-  where py >nul 2>&1
-  if errorlevel 1 (
-    echo Python bulunamadi. Kur: https://python.org
-    echo Kurarken "Add Python to PATH" kutusunu ISARETLE.
-    pause
-    exit /b 1
-  )
-  py menu.py %*
-) else (
-  python menu.py %*
+set "PY="
+where python >nul 2>&1 && set "PY=python"
+if not defined PY ( where py >nul 2>&1 && set "PY=py" )
+if not defined PY ( where python3 >nul 2>&1 && set "PY=python3" )
+
+if not defined PY (
+  echo.
+  echo   Python bulunamadi.
+  echo   Kur: https://www.python.org/downloads/
+  echo   Kurarken "Add Python to PATH" kutusunu ISARETLE.
+  echo.
+  pause
+  exit /b 1
 )
 
-REM Cift tiklamada pencere kapanmasin ki hata mesaji okunabilsin.
-if errorlevel 1 pause
+%PY% menu.py %*
+
+REM Pencere hemen kapanmasin - son cikti okunabilsin.
+echo.
+pause

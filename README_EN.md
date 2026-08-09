@@ -30,10 +30,13 @@ huggingface-cli download uixova/vexira vexira_sft.pt vexira_spm.model --local-di
 **No terminal experience needed** — double-click for a menu:
 
 ```
-./vexira.sh      Linux / macOS
-vexira.bat       Windows (double-click)
-vexira.ps1       Windows PowerShell
+./vexira.sh      Linux / macOS   — double-click, opens its own terminal
+vexira.bat       Windows         — double-click
+vexira.ps1       Windows         — right-click > "Run with PowerShell"
 ```
+
+> Double-clicking a `.ps1` opens Notepad — that is Windows' default.
+> Use `vexira.bat` if you want double-click.
 
 ```
  1  Translate text   EN → TR     4  Translate file   TR → EN
