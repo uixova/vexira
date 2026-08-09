@@ -359,13 +359,38 @@ selam kanka ne haber  -> Hi, dude, what's up?     ✓
 ```
 
 Çözüm sözlük değil — sözlük tam eşleşmeyle çalışır, cümle içindeki `knk`'yı
-yakalayamaz. Kaynak tarafında **açılıyor** (22 kısaltma, modele gömülü,
-`ck["preprocess"]`). Yalnız TR→EN yönünde çalışır, `--no-expand` ile kapanır:
+yakalayamaz. Kaynak tarafında **açılıyor**: **64 giriş**, modele gömülü
+(`ck["preprocess"]`), yalnız TR→EN yönünde, `--no-expand` ile kapanır.
+
+Tabloda iki kategori var:
+
+**A. Yazım açılımı** — model tam yazımı biliyor, kısaltmayı bilmiyor:
 
 ```
-selam knk naber  ->  Hi, dude, what's up?
-nbr / slm / tmm  ->  What's new / hello / OK.
+selam knk naber  ->  Hi, dude, what's up?      slm nslsn      ->  Hi, how are you?
+hersey yolunda   ->  everything is fine        noluyo burda   ->  What's happening here
 ```
+
+**B. Anlam eşlemesi** — kelimenin *kendisi* modelde yok. Ölçüldü:
+
+```
+eyvallah -> "12. 12. 2017"     inşallah -> "Imprint"
+maşallah -> "Misha"            yha      -> "xhamster.com"
+```
+
+Son satır web korpusundan bulaşma. Bunlar kısaltma değil, kelime dağarcığı
+boşluğu; modelin bildiği anlamdaşına eşleniyor:
+
+```
+eyvallah -> sağ ol   =>  "Thanks"        inşallah -> umarım  =>  "I hope"
+```
+
+Anlam birebir değil ama "12. 12. 2017"ten iyi. İleride veri eklenirse bu
+satırlar kaldırılmalı — kodda öyle işaretli.
+
+Her giriş **ölçülerek** seçildi: ham çıktı ile açılmış çıktı karşılaştırıldı,
+yalnız iyileştirenler kaldı. `vb -> etc.` zaten doğru olduğu için listeye
+alınmadı.
 
 ### Çıktı onarımı
 

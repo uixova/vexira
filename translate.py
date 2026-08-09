@@ -113,13 +113,57 @@ POSTPROCESS_DEFAULTS = {
 #
 # Listeye yalnız TEK anlamlı kısaltmalar girer. "bi" -> "bir" gibi bağlama göre
 # değişebilecekler dışarıda; yanlış açılım, çevrilmemiş kısaltmadan kötüdür.
+# İKİ KATEGORİ var, ikisi de aynı tabloda ama farklı gerekçeyle:
+#
+#   A) YAZIM AÇILIMI — model tam yazımı biliyor, kısaltmayı bilmiyor.
+#        knk -> kanka  ·  nbr -> ne haber  ·  hersey -> her şey
+#
+#   B) ANLAM EŞLEMESİ — kelimenin KENDİSİ modelde yok. Ölçüldü:
+#        eyvallah -> "12. 12. 2017"    inşallah -> "Imprint"
+#        maşallah -> "Misha"           ya       -> "sss"
+#      Bunlar kısaltma değil, kelime dağarcığı boşluğu. Modelin bildiği
+#      anlamdaşına eşleniyor:
+#        eyvallah -> sağ ol  ("thanks")     inşallah -> umarım  ("I hope")
+#      Anlam birebir değil ama "12. 12. 2017"ten sonsuz iyi. Bu satırlar
+#      ilerideki bir eğitim turunda veri eklenirse KALDIRILMALI.
+#
+# Listeye yalnız TEK anlamlı olanlar girer. "bi" -> "bir" gibi bağlama göre
+# değişebilecekler dışarıda; yanlış açılım, çevrilmemiş kısaltmadan kötüdür.
+# Her giriş ölçüldü: ham çıktı ile açılmış çıktı karşılaştırıldı, yalnız
+# İYİLEŞTİRENLER kaldı ("vb -> etc." zaten doğruydu, listeye alınmadı).
 ABBREV_TR = {
-    "slm": "selam", "mrb": "merhaba", "nbr": "ne haber", "naber": "ne haber",
-    "knk": "kanka", "tmm": "tamam", "eyw": "eyvallah", "tşk": "teşekkürler",
-    "tsk": "teşekkürler", "tesekkurler": "teşekkürler", "inş": "inşallah",
-    "kib": "kendine iyi bak", "msj": "mesaj", "svyrm": "seviyorum",
-    "bkz": "bakınız", "vs": "vesaire", "vb": "ve benzeri", "örn": "örneğin",
-    "gnaydn": "günaydın", "iyw": "iyi", "nsl": "nasıl", "nslsn": "nasılsın",
+    # --- selamlama / veda ---
+    "slm": "selam", "mrb": "merhaba", "mrhb": "merhaba",
+    "gnaydn": "günaydın", "gunaydin": "günaydın",
+    "hg": "hoş geldin", "hosgeldin": "hoş geldin", "hb": "hoş bulduk",
+    "grsrz": "görüşürüz", "grsuruz": "görüşürüz", "gule gule": "güle güle",
+    # --- soru / hâl hatır ---
+    "nbr": "ne haber", "naber": "ne haber", "nabersin": "ne haber",
+    "nolur": "ne olur", "noluyo": "ne oluyor", "noluyor": "ne oluyor",
+    "napıyon": "ne yapıyorsun", "napiyon": "ne yapıyorsun",
+    "naptın": "ne yaptın", "naptin": "ne yaptın",
+    "nsl": "nasıl", "nslsn": "nasılsın", "naslsn": "nasılsın", "nie": "niye",
+    # --- hitap ---
+    "knk": "kanka", "kanks": "kanka", "cnm": "canım",
+    "bnm": "benim", "snn": "senin",
+    # --- onay / ret ---
+    "tmm": "tamam", "tmmdr": "tamamdır", "okey": "tamam",
+    "ewt": "evet", "evt": "evet", "hyr": "hayır",
+    # --- nezaket ---
+    "tsk": "teşekkürler", "tskler": "teşekkürler",
+    "sagol": "sağ ol", "ltf": "lütfen", "plz": "lütfen", "pls": "lütfen",
+    "rcm": "rica ederim", "kib": "kendine iyi bak",
+    # --- (B) anlam eşlemesi: kelime modelde YOK ---
+    "eyvallah": "sağ ol", "eyw": "sağ ol", "eyv": "sağ ol",
+    "inşallah": "umarım", "inş": "umarım", "insallah": "umarım",
+    "tabii": "elbette", "tabi": "elbette", "tbi": "elbette",
+    "yaw": "ya be", "yha": "ya be",
+    # --- diğer ---
+    "msj": "mesaj", "svyrm": "seviyorum", "şkr": "şükür",
+    "bkz": "bakınız", "vs": "vesaire",
+    # --- bitişik / diyakritiksiz yazım ---
+    "iyiki": "iyi ki", "hersey": "her şey", "birsey": "bir şey",
+    "hicbirsey": "hiçbir şey",
 }
 
 

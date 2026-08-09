@@ -366,14 +366,40 @@ selam kanka ne haber  -> Hi, dude, what's up?     ✓
 ```
 
 A glossary cannot fix this — it matches whole strings, so it never sees the
-`knk` inside a sentence. They are **expanded on the source side** instead
-(22 entries, embedded in the model as `ck["preprocess"]`). TR→EN only,
-disabled with `--no-expand`:
+`knk` inside a sentence. They are **expanded on the source side** instead:
+**64 entries**, embedded in the model (`ck["preprocess"]`), TR→EN only,
+disabled with `--no-expand`.
+
+The table holds two kinds of entry:
+
+**A. Spelling expansion** — the model knows the full form, not the shorthand:
 
 ```
-selam knk naber  ->  Hi, dude, what's up?
-nbr / slm / tmm  ->  What's new / hello / OK.
+selam knk naber  ->  Hi, dude, what's up?      slm nslsn      ->  Hi, how are you?
+hersey yolunda   ->  everything is fine        noluyo burda   ->  What's happening here
 ```
+
+**B. Semantic mapping** — the *word itself* is missing from the model. Measured:
+
+```
+eyvallah -> "12. 12. 2017"     inşallah -> "Imprint"
+maşallah -> "Misha"            yha      -> "xhamster.com"
+```
+
+That last one is contamination from the web corpus. These are vocabulary gaps
+rather than abbreviations, so they map to a synonym the model does know:
+
+```
+eyvallah -> sağ ol   =>  "Thanks"        inşallah -> umarım  =>  "I hope"
+```
+
+Not an exact match in meaning, but far better than "12. 12. 2017". These lines
+should be removed once a future training round covers the words — they are
+marked as such in the code.
+
+Every entry was chosen by **measurement**: raw output compared against expanded
+output, keeping only those that improved. `vb -> etc.` was already correct, so
+it is not in the table.
 
 ### Output repair
 
