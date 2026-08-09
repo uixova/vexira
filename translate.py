@@ -2,25 +2,14 @@
 """
 Vexira çıkarım — beam search + KV cache.
 
-TAŞINABİLİR: saf metin -> metin. İşletim sistemine, masaüstü ortamına, ekran
-sunucusuna ya da harici servise HİÇBİR bağımlılığı yok. Yalnızca Python + torch.
-Ekran yakalama, OCR, TTS/STT gibi sistem işleri BİLİNÇLİ olarak dışarıda:
-onları çağıran script yapar, buraya sadece metin gelir.
+Saf metin -> metin. Sistem bağımlılığı yok, yalnız Python + torch. OCR/TTS/STT
+gibi işler bilinçli olarak dışarıda; buraya sadece metin gelir.
 
-  [ekran bölgesi seçen script] -> [OCR] -> METİN -> translate() -> METİN -> [overlay]
-                                                     ^^^^^^^^^^^
-                                                  bu dosyanın tamamı
+Hız: encoder bir kez koşar (cross-attn K/V yeniden kullanılır), decoder KV
+cache, toplu çeviri + uzunluk kovalama, beam 2.
 
-SIKIŞTIRMA YOK. int8/ternary yolu bilinçli olarak yok: bu ölçekte kalite kaybı
-maliyetine değmiyor. Hız kaynakları:
-  - encoder BİR KEZ koşar, cross-attn K/V tüm decode adımlarında yeniden kullanılır
-  - decoder self-attn KV cache
-  - toplu (batch) çeviri + uzunluk kovalama
-  - beam 2 (beam 4 ~+0.5 BLEU ama 2x yavaş — canlı kullanımda 2 yeterli)
-
-Ağırlık fp16 saklanır (~161 MB); CPU'da fp32'ye çevrilip hesaplanır çünkü çoğu
-masaüstü/dizüstü CPU'sunda fp16 GEMM donanımı yok, fp32 daha hızlı. Bu davranış
---fp32-store ile kapatılabilir.
+Ağırlık fp16 saklanır, CPU'da fp32 hesaplanır (fp16 GEMM donanımı yaygın değil).
+--fp32-store ile kapatılır. Sıkıştırma yok: bu ölçekte kalite kaybına değmiyor.
 
 Kullanım:
   python translate.py --text "Hello world" --to tr
@@ -38,13 +27,10 @@ import time
 
 
 def _need(pkg, pip_name=None, extra=""):
-    """Eksik bağımlılıkta ham traceback yerine ne yapılacağını söyle.
+    """Eksik bağımlılıkta ham traceback yerine kurulum komutunu göster.
 
-    OTOMATİK KURMUYORUZ, bilinçli: betik içinden pip çalıştırmak kullanıcının
-    ortamını habersiz değiştirir, yanlış torch derlemesi çekebilir (CPU 200 MB
-    / CUDA 2.5 GB), internet ister — "tamamen yerel" iddiasıyla çelişir — ve
-    Arch/Debian'da PEP 668 zaten engeller. Kararı kullanıcı verir; bize düşen
-    komutu net söylemek.
+    Otomatik kurmuyoruz: pip'i betikten çağırmak kullanıcının ortamını habersiz
+    değiştirir, yanlış torch derlemesi çekebilir ve PEP 668 zaten engeller.
     """
     import importlib
     try:
@@ -70,19 +56,9 @@ PAD_ID, BOS_ID, EOS_ID = 0, 2, 3
 # Terim tutarlılığı %42 düzelirken genel çeviri kaybı gürültü içinde.
 DEFAULT_CKPT = "models/vexira_sft.pt"
 
-# Çıktı onarımı — ölçülen iki gerçek kusur (559 satırlık .rpy testi):
-#   1) "\n" -> "\ n"      SentencePiece kaçış dizisini iki parçaya bölüyor,
-#                         decode araya boşluk koyuyor. Ren'Py'de satır sonu ölür.
-#   2) "[text]" -> "[metin]"  model değişken ADINI çeviriyor; motor o adı arar,
-#                         bulamaz, oyun bozulur.
-# İkisi de HER ZAMAN hatadır (geçerli bir çıktı bu biçimde olamaz), o yüzden
-# onarım güvenli ve varsayılan olarak açık.
-# Bu kurallar VERİ olarak checkpoint'e de gömülür (ck["postprocess"]).
-# Sebebi: kusurlar BU MODELİN eğitim verisinden geliyor (altyazı korpusundaki
-# iki-konuşmacı satırları, arayüz metnindeki yer tutucular). Kural modelle
-# birlikte gitmezse, modeli başka bir dilde/altyapıda çalıştıran kişi aynı
-# kusurları yeniden keşfetmek zorunda kalır. Bunlar KOD değil, bildirimsel
-# desen — JSON'a yazılıp Rust/JS/C++ tarafından da okunabilir.
+# Çıktı onarımı. Kusurlar bu modelin eğitim verisinden geliyor, o yüzden
+# kurallar da modelle taşınıyor (ck["postprocess"]) — bildirimsel desen, kod
+# değil; başka dillerden de okunabilir. 559 satırlık .rpy testinde ölçüldü.
 POSTPROCESS_DEFAULTS = {
     "escape_fix": {
         "pattern": r"\\\s+([nrt])", "repl": r"\\\1",
@@ -103,34 +79,18 @@ POSTPROCESS_DEFAULTS = {
 
 # --------------------------- ÖN İŞLEME ---------------------------
 #
-# Sohbet kısaltmaları. Eğitim korpusu (altyazı + web) düzgün yazılmış metin;
-# SMS/sohbet kısaltması neredeyse hiç geçmiyor. Ölçüldü:
-#     "selam knk naber"       -> "hello knk naber"          ✗
-#     "selam kanka ne haber"  -> "Hi, dude, what's up?"     ✓
-# Model TAM YAZIMI zaten biliyor. O yüzden çözüm sözlük değil (sözlük tam
-# eşleşmeyle çalışır, cümle içindeki "knk"yı yakalayamaz), kaynak tarafında
-# AÇMAK. Bu da bildirimsel veri — checkpoint'e gömülüyor.
+# Sohbet kısaltmaları. Eğitim korpusu düzgün yazılmış metin, SMS kısaltması yok:
+#     "selam knk naber" -> "hello knk naber"  ·  açılmış hâli -> "Hi, dude, what's up?"
+# Sözlük çözemez (tam eşleşme yapar, cümle içindeki "knk"yı görmez), o yüzden
+# kaynak tarafında açılıyor. Checkpoint'e gömülü.
+# İki kategori:
+#   A) yazım açılımı — model tam yazımı biliyor:  knk -> kanka
+#   B) anlam eşlemesi — kelime modelde YOK. Ölçüldü: eyvallah -> "12. 12. 2017",
+#      inşallah -> "Imprint", yha -> "xhamster.com". Bildiği anlamdaşına
+#      eşleniyor. Veri eklenirse bu satırlar KALDIRILMALI.
 #
-# Listeye yalnız TEK anlamlı kısaltmalar girer. "bi" -> "bir" gibi bağlama göre
-# değişebilecekler dışarıda; yanlış açılım, çevrilmemiş kısaltmadan kötüdür.
-# İKİ KATEGORİ var, ikisi de aynı tabloda ama farklı gerekçeyle:
-#
-#   A) YAZIM AÇILIMI — model tam yazımı biliyor, kısaltmayı bilmiyor.
-#        knk -> kanka  ·  nbr -> ne haber  ·  hersey -> her şey
-#
-#   B) ANLAM EŞLEMESİ — kelimenin KENDİSİ modelde yok. Ölçüldü:
-#        eyvallah -> "12. 12. 2017"    inşallah -> "Imprint"
-#        maşallah -> "Misha"           ya       -> "sss"
-#      Bunlar kısaltma değil, kelime dağarcığı boşluğu. Modelin bildiği
-#      anlamdaşına eşleniyor:
-#        eyvallah -> sağ ol  ("thanks")     inşallah -> umarım  ("I hope")
-#      Anlam birebir değil ama "12. 12. 2017"ten sonsuz iyi. Bu satırlar
-#      ilerideki bir eğitim turunda veri eklenirse KALDIRILMALI.
-#
-# Listeye yalnız TEK anlamlı olanlar girer. "bi" -> "bir" gibi bağlama göre
-# değişebilecekler dışarıda; yanlış açılım, çevrilmemiş kısaltmadan kötüdür.
-# Her giriş ölçüldü: ham çıktı ile açılmış çıktı karşılaştırıldı, yalnız
-# İYİLEŞTİRENLER kaldı ("vb -> etc." zaten doğruydu, listeye alınmadı).
+# Yalnız tek anlamlılar girer ("bi" -> "bir" bağlama göre değişir, yok).
+# Her giriş ölçüldü, yalnız iyileştirenler kaldı ("vb -> etc." zaten doğruydu).
 ABBREV_TR = {
     # --- selamlama / veda ---
     "slm": "selam", "mrb": "merhaba", "mrhb": "merhaba",
@@ -210,21 +170,13 @@ def load_postprocess(ck_pp=None):
 
 
 _PP = load_postprocess()
-_ESCAPE_FIX = _PP["escape_fix"]["rx"]
-_PH_OUT = _PP["placeholder"]["rx"]
-
-
-# Altyazı korpusu artefaktı: OpenSubtitles'ta iki konuşmacı tek satırda geçiyor
-#     - Günaydın.
-#     - Günaydın.
-# Model bu yüzden <sub> alanında kısa selamlamayı karşılıklı diyalog sanıyor:
-#     "Good morning."  ->  "Günaydın. - Günaydın."
-# Ölçüldü: 400 FLORES cümlesinde 0 kez, yalnız 1-3 kelimelik ünlemlerde.
-# Dar ama gerçek; kaynak zaten tekrar İÇERMİYORSA güvenle sadeleştirilir.
-_DUP = _PP["collapse_dup"]["rx"]
 
 
 def _collapse_dup(src, out, pp=None):
+    """Altyazı artefaktı: OpenSubtitles'ta iki konuşmacı tek satırı paylaşıyor,
+    model kısa selamlamayı diyalog sanıyor ("Good morning." -> "Günaydın. -
+    Günaydın."). 400 FLORES cümlesinde 0 kez; dar ama gerçek. Kaynak zaten
+    tekrar içermiyorsa sadeleştirilir."""
     rx = (pp or _PP)["collapse_dup"]["rx"]
     s = out.strip()
     m = rx.match(s)
@@ -254,21 +206,13 @@ def repair_output(src, out, pp=None):
 
 # --------------------------- ÇALIŞMA AYARLARI ---------------------------
 #
-# Bu ayarlar MODELİN İÇİNE gömülür (ckpt["runtime"]). Sebebi: doğru değerler
-# modele özgü ve ölçümle bulundu; kullanıcının bunları bilmesi ya da doğru
-# tahmin etmesi beklenemez. Model nereye giderse ayarı da yanında gider.
+# Modele gömülür (ckpt["runtime"]) — doğru değerler modele özgü ve ölçümle
+# bulundu, kullanıcının bilmesi beklenemez.
+#   öncelik:  --threads 8  >  VEXIRA_THREADS=8  >  ckpt["runtime"]  >  aşağısı
 #
-# Öncelik sırası (üstteki kazanır):
-#   1. CLI bayrağı           --threads 8
-#   2. Ortam değişkeni       VEXIRA_THREADS=8
-#   3. Checkpoint'e gömülü   ckpt["runtime"]["threads"]
-#   4. Buradaki varsayılan
-#
-# thread neden 4: bu boyutta (80M, d_model 512) katman başına iş küçük,
-# senkronizasyon maliyeti hesabı geçiyor. 12 çekirdekli makinede ölçüldü:
-#     thread= 4, beam=2 ->  77.6 ms/satır   (12.9 satır/sn)
-#     thread=12, beam=2 -> 466.0 ms/satır   ( 2.1 satır/sn)  <- torch varsayılanı
-# Varsayılanı torch'a bırakmak 6x yavaş demek.
+# thread neden 4: 12 çekirdekli makinede ölçüldü, beam=2 ile
+#     4 thread ->  77.6 ms/satır   ·   12 thread -> 466.0 ms/satır
+# Bu boyutta katman başına iş küçük, senkronizasyon maliyeti hesabı geçiyor.
 RUNTIME_DEFAULTS = {
     "threads": 4,
     "beam": 2,
@@ -299,10 +243,6 @@ def resolve_runtime(ckpt_runtime=None, **cli):
     r.update({k: v for k, v in cli.items() if v})
     r["threads"] = max(1, min(int(r["threads"]), os.cpu_count() or 1))
     return r
-
-
-def default_threads():
-    return resolve_runtime()["threads"]
 
 
 def trained_positions(pos_weight, floor=0.25):
@@ -749,8 +689,7 @@ def main():
     ap.add_argument("--self-test", action="store_true",
                     help="padding bağımsızlığı regresyon testi (model gerekmez)")
     ap.add_argument("--threads", type=int, default=0,
-                    help="0 = otomatik (çekirdek sayısı ne olursa olsun en fazla "
-                         "DEFAULT_THREADS). Fazla thread bu boyutta YAVAŞLATIR.")
+                    help="0 = otomatik. Fazla thread bu boyutta YAVAŞLATIR.")
     args = ap.parse_args()
 
     # Thread'i ckpt'teki ayardan belirle (model yüklenmeden önce gerekli, o

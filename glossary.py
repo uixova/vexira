@@ -1,44 +1,33 @@
 # -*- coding: utf-8 -*-
 """
-Vexira sözlüğü (termbase) — çeviri tutarlılığı için.
+Vexira sözlüğü (termbase) — terim tutarlılığı için.
 
-NEDEN GEREKLİ
-    Sinir ağı her cümleyi sıfırdan karar vererek çevirir; aynı terim iki farklı
-    cümlede iki farklı karşılık alabilir ("renderer" -> bir yerde "oluşturucu",
-    başka yerde "renderer"). Bu kalite değil TUTARLILIK sorunudur ve daha fazla
-    eğitim verisiyle çözülmez — Google/DeepL de model tarafında çözmez, sözlük
-    (glossary/termbase) katmanı ekler. Vexira'da da öyle.
+Sinir ağı her cümleyi sıfırdan çevirir, terim hafızası yoktur: "renderer" bir
+satırda "oluşturucu", diğerinde "renderer" çıkabilir. Bu kalite değil TUTARLILIK
+sorunu; daha fazla veriyle çözülmez. Google/DeepL de model tarafında çözmez,
+sözlük katmanı ekler.
 
-İKİ MEKANİZMA
-    1) TAM EŞLEŞME (exact)  — girdinin TAMAMI sözlükte varsa model hiç
-       çağrılmaz, karşılık doğrudan döner. Deterministik, %100 tutarlı.
-       Arayüz etiketleri ("Auto Save", "Page {}") tam olarak bu sınıfa girer.
-    2) ENJEKSİYON (inject)  — terim uzun bir cümlenin İÇİNDE geçiyorsa kaynak
-       metindeki terim, hedef karşılığıyla değiştirilip <keep_start>..<keep_end>
-       arasına alınır. Model bu bölgeyi "aynen taşı" olarak öğrenmiştir, dolayısıyla
-       karşılığı olduğu gibi çıkarır ve gerekirse Türkçe ekini sonuna ekler.
-       (WMT terminology task yaklaşımı; kısıtlı beam search'ten daha az akıcılık
-       bozar.)
+İki mekanizma:
+  tam eşleşme  girdinin TAMAMI sözlükteyse model hiç çağrılmaz — deterministik.
+               Arayüz etiketleri ("Auto Save") bu sınıfa girer.
+  enjeksiyon   terim cümle içindeyse kaynaktaki terim hedef karşılığıyla
+               değiştirilip <keep_start>..<keep_end> arasına alınır (WMT
+               terminology yaklaşımı). VARSAYILAN KAPALI — bkz. Glossary.__init__.
 
-BEYNE GÖMME
-    Sözlük checkpoint'in İÇİNE yazılabilir (`ck["glossary"]`). Böylece modeli
-    taşıyan tek dosya kalır: vexira.pt = ağırlık + config + adım + SÖZLÜK.
-    Tokenizer .model dosyası ayrı kalmak zorunda (SentencePiece kendi ikili
-    formatını istiyor), ama o da checkpoint'e gömülü tutulur ve gerekirse
-    `--extract-spm` ile geri yazılır.
+Sözlük checkpoint'in içine yazılır (ck["glossary"]), böylece modeli taşıyan tek
+dosya kalır. Tokenizer da gömülüdür, --extract-spm ile geri yazılır.
 
-KULLANIM
-    python glossary.py build   terms.tsv --out models/vexira.pt   # beyne göm
-    python glossary.py show    models/vexira.pt
-    python glossary.py export  models/vexira.pt --out terms.tsv
-    python glossary.py test    models/vexira.pt
+Kullanım:
+  python glossary.py build   terms.tsv --out models/vexira.pt
+  python glossary.py show    models/vexira.pt
+  python glossary.py export  models/vexira.pt --out terms.tsv
+  python glossary.py validate --tsv terms.tsv --out temiz.tsv
+  python glossary.py test
 
-TSV BİÇİMİ (sekmeyle ayrılmış — terimlerde "-" ve ":" geçtiği için virgül/
-iki nokta AYIRAÇ DEĞİL):
-    en<TAB>tr[<TAB>domain][<TAB>inject]
-    Auto Save<TAB>Otomatik Kayıt<TAB>ui
-    renderer<TAB>oluşturucu<TAB>ui<TAB>1
-    play<TAB>oynat<TAB>ui<TAB>0        # 0 = cümle içine enjekte etme (çok anlamlı)
+TSV: ayıraç SADECE TAB (terimlerde "-" ve ":" geçiyor)
+  en<TAB>tr[<TAB>domain][<TAB>inject]
+  Auto Save<TAB>Otomatik Kayıt<TAB>ui
+  play<TAB>oynat<TAB>ui<TAB>0        # 0 = cümle içine enjekte etme
 """
 
 import argparse
