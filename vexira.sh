@@ -56,14 +56,14 @@ if [ -z "$PY" ]; then
   echo "  Debian: sudo apt install python3 python3-pip"
   echo "  Fedora: sudo dnf install python3 python3-pip"
   echo
-  read -r -n1 -s -p "  Kapatmak için bir tuşa bas..."
-  echo
+  read -r -p "  Kapatmak için Enter..." _
   exit 1
 fi
 
 "$PY" menu.py "$@"
 
 # Çift tıklamayla açılan pencere hemen kapanmasın — son çıktı okunabilsin.
+# "herhangi bir tuş" (read -n1 -s) her terminalde güvenilir değil;
+# Enter beklemek her yerde çalışır.
 echo
-read -r -n1 -s -p "  Kapatmak için bir tuşa bas..."
-echo
+read -r -p "  Kapatmak için Enter..." _

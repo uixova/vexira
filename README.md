@@ -349,6 +349,24 @@ Windows -> Windows (çevrilmez)     window -> pencere
 
 Harf durumu girdiden taşınır: `SAVE`→`KAYDET`, `Save`→`Kaydet`, `save`→`kaydet`.
 
+**Sohbet kısaltmaları.** Eğitim korpusu (altyazı + web) düzgün yazılmış metin;
+SMS kısaltması neredeyse hiç geçmiyor. Model tam yazımı biliyor ama kısaltmayı
+tanımıyordu:
+
+```
+selam knk naber       -> hello knk naber          ✗
+selam kanka ne haber  -> Hi, dude, what's up?     ✓
+```
+
+Çözüm sözlük değil — sözlük tam eşleşmeyle çalışır, cümle içindeki `knk`'yı
+yakalayamaz. Kaynak tarafında **açılıyor** (22 kısaltma, modele gömülü,
+`ck["preprocess"]`). Yalnız TR→EN yönünde çalışır, `--no-expand` ile kapanır:
+
+```
+selam knk naber  ->  Hi, dude, what's up?
+nbr / slm / tmm  ->  What's new / hello / OK.
+```
+
 ### Çıktı onarımı
 
 Gerçek Ren'Py testinde ölçülen iki kusur, çıkarımda deterministik onarılıyor:

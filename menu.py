@@ -52,31 +52,32 @@ def save_text(lines, to):
 
 
 def do_text(tr, to):
-    print(c("d", "\nMetni yaz. Bitirmek için BOŞ satırda Enter.\n"))
-    lines = []
+    """Satır yaz, Enter — ANINDA çevrilir. Boş satır menüye döner.
+
+    Önce "hepsini yaz, boş satırda bitir" tasarımıydı: kullanıcı tek cümle için
+    bile İKİ kez Enter'a basmak zorunda kalıyordu ve çeviriyi görene kadar
+    bekliyordu. Satır başına anında cevap hem daha az tuş hem daha canlı.
+    """
+    arrow = "EN → TR" if to == "tr" else "TR → EN"
+    print(c("d", f"\n  {arrow} · satır yaz + Enter = çeviri · boş Enter = menü\n"))
+    done = []
     while True:
         try:
-            ln = input("  ")
+            ln = input(c("t", "  > "))
         except (EOFError, KeyboardInterrupt):
             print()
             break
         if not ln.strip():
             break
-        lines.append(ln)
-    if not lines:
-        return
-    t0 = time.time()
-    # domain="doc": serbest metin için doğru alan. "sub" altyazı DOSYASI için;
-    # orada kısa selamlamalar iki konuşmacılı diyaloğa dönüşüyor
-    # ("Good morning." -> "Günaydın. - Günaydın.").
-    res = tr.translate(lines, tgt_lang=to, domain="doc", beam=2)
-    el = time.time() - t0
-    print(c("g", "\n  ── çeviri ──"))
-    for r in res:
-        print("  " + r)
-    p = save_text(res, to)
-    print(c("d", f"\n  {len(res)} satır · {1000*el/len(res):.0f} ms/satır"))
-    print(c("d", f"  kaydedildi: {p}"))
+        t0 = time.time()
+        # domain="doc": serbest metin için doğru alan. "sub" altyazı DOSYASI
+        # için; orada kısa selamlamalar iki konuşmacılı diyaloğa dönüşüyor
+        # ("Good morning." -> "Günaydın. - Günaydın.").
+        r = tr.translate([ln], tgt_lang=to, domain="doc", beam=2)[0]
+        print(c("g", f"    {r}") + c("d", f"   ({1000*(time.time()-t0):.0f} ms)"))
+        done.append(r)
+    if done:
+        print(c("d", f"\n  {len(done)} satır → {save_text(done, to)}"))
 
 
 def do_file(tr, to):

@@ -356,6 +356,25 @@ Windows -> Windows (untranslated)     window -> pencere
 Casing is carried from the input: `SAVE`→`KAYDET`, `Save`→`Kaydet`,
 `save`→`kaydet`.
 
+**Chat abbreviations.** The training corpus (subtitles + web) is properly
+written text; SMS-style shorthand barely appears. The model knew the full
+spelling but not the abbreviation:
+
+```
+selam knk naber       -> hello knk naber          ✗
+selam kanka ne haber  -> Hi, dude, what's up?     ✓
+```
+
+A glossary cannot fix this — it matches whole strings, so it never sees the
+`knk` inside a sentence. They are **expanded on the source side** instead
+(22 entries, embedded in the model as `ck["preprocess"]`). TR→EN only,
+disabled with `--no-expand`:
+
+```
+selam knk naber  ->  Hi, dude, what's up?
+nbr / slm / tmm  ->  What's new / hello / OK.
+```
+
 ### Output repair
 
 Two defects measured on the real Ren'Py file are repaired deterministically at

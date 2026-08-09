@@ -101,6 +101,53 @@ POSTPROCESS_DEFAULTS = {
 }
 
 
+# --------------------------- ÖN İŞLEME ---------------------------
+#
+# Sohbet kısaltmaları. Eğitim korpusu (altyazı + web) düzgün yazılmış metin;
+# SMS/sohbet kısaltması neredeyse hiç geçmiyor. Ölçüldü:
+#     "selam knk naber"       -> "hello knk naber"          ✗
+#     "selam kanka ne haber"  -> "Hi, dude, what's up?"     ✓
+# Model TAM YAZIMI zaten biliyor. O yüzden çözüm sözlük değil (sözlük tam
+# eşleşmeyle çalışır, cümle içindeki "knk"yı yakalayamaz), kaynak tarafında
+# AÇMAK. Bu da bildirimsel veri — checkpoint'e gömülüyor.
+#
+# Listeye yalnız TEK anlamlı kısaltmalar girer. "bi" -> "bir" gibi bağlama göre
+# değişebilecekler dışarıda; yanlış açılım, çevrilmemiş kısaltmadan kötüdür.
+ABBREV_TR = {
+    "slm": "selam", "mrb": "merhaba", "nbr": "ne haber", "naber": "ne haber",
+    "knk": "kanka", "tmm": "tamam", "eyw": "eyvallah", "tşk": "teşekkürler",
+    "tsk": "teşekkürler", "tesekkurler": "teşekkürler", "inş": "inşallah",
+    "kib": "kendine iyi bak", "msj": "mesaj", "svyrm": "seviyorum",
+    "bkz": "bakınız", "vs": "vesaire", "vb": "ve benzeri", "örn": "örneğin",
+    "gnaydn": "günaydın", "iyw": "iyi", "nsl": "nasıl", "nslsn": "nasılsın",
+}
+
+
+def _abbrev_rx(table):
+    if not table:
+        return None
+    keys = sorted(table, key=len, reverse=True)
+    return re.compile(r"(?<!\w)(" + "|".join(re.escape(k) for k in keys) + r")(?!\w)",
+                      re.IGNORECASE)
+
+
+def expand_abbrev(text, table, rx=None):
+    """Kaynak metindeki sohbet kısaltmalarını aç. Büyük harf deseni korunur."""
+    rx = rx or _abbrev_rx(table)
+    if not rx:
+        return text
+
+    def sub(m):
+        w = m.group(1)
+        full = table.get(w.lower(), w)
+        if w.isupper() and len(w) > 1:
+            return full.upper()
+        if w[:1].isupper():
+            return full[:1].upper() + full[1:]
+        return full
+    return rx.sub(sub, text)
+
+
 def load_postprocess(ck_pp=None):
     """Checkpoint'teki kuralları derle; eksikse koddaki varsayılana düş."""
     src = dict(POSTPROCESS_DEFAULTS)
@@ -310,9 +357,10 @@ def resolve_spm(ckpt_path, explicit=None):
 class Translator:
     def __init__(self, ckpt=DEFAULT_CKPT, spm=None, device="cpu",
                  fp16_store=True, glossary=None, use_glossary=True,
-                 repair=True, inject=False):
+                 repair=True, inject=False, expand=True):
         self.device = torch.device(device)
         self.repair = repair
+        self.expand = expand
         self.tok = VexiraTokenizer(resolve_spm(ckpt, spm))
 
         ck = torch.load(ckpt, map_location="cpu", weights_only=False)
@@ -358,11 +406,16 @@ class Translator:
         self.runtime = resolve_runtime(ck.get("runtime"))
         # Onarım kuralları da modelden gelir; yoksa koddaki varsayılan.
         self.pp = load_postprocess(ck.get("postprocess"))
+        # Sohbet kısaltmaları: kaynak TÜRKÇE olduğunda (yani hedef EN) açılır.
+        pre = ck.get("preprocess") or {}
+        self.abbrev = dict(pre.get("abbrev_tr") or ABBREV_TR)
+        self._abbrev_rx = _abbrev_rx(self.abbrev)
         self.info = {"step": ck.get("step"), "best_val": ck.get("best_val"),
                      "params": self.model.num_params(),
                      "glossary": len(self.gloss),
                      "runtime": self.runtime}
-        self.stats = {"exact": 0, "injected": 0, "model": 0, "split": 0}
+        self.stats = {"exact": 0, "injected": 0, "model": 0, "split": 0,
+                      "abbrev": 0}
 
     # ------------------------------------------------------------------
     @torch.no_grad()
@@ -383,11 +436,21 @@ class Translator:
         encoded, todo = [], []          # todo: modele gidecek satırların indeksi
 
         for i, ln in enumerate(lines):
+            text, keep = ln, None
+
+            # --- katman 0: KISALTMA AÇMA. Kaynak Türkçe ise (hedef EN) sohbet
+            # kısaltmaları açılır. Sözlükten ÖNCE gelir: "slm" sözlükte yok ama
+            # "selam" olabilir; ayrıca model tam yazımı zaten biliyor.
+            if tgt_lang == "en" and self.expand and self._abbrev_rx:
+                text = expand_abbrev(text, self.abbrev, self._abbrev_rx)
+                if text != ln:
+                    self.stats["abbrev"] += 1
+
             # --- katman 1: TAM EŞLEŞME. Model hiç çağrılmaz, sonuç deterministik.
             # Arayüz etiketlerinin tamamı buraya düşer; tutarsızlık matematiksel
             # olarak imkânsız hâle gelir.
             if len(self.gloss):
-                hit = self.gloss.lookup(ln, tgt_lang, domain=domain)
+                hit = self.gloss.lookup(text, tgt_lang, domain=domain)
                 if hit is not None:
                     out[i] = hit
                     self.stats["exact"] += 1
@@ -396,9 +459,8 @@ class Translator:
             # --- katman 2: CÜMLE İÇİ ENJEKSİYON. Terim hedef karşılığıyla
             # değiştirilip koruma bölgesine alınır; model kalanı çevirir ve
             # gerekirse Türkçe ekini terimin sonuna ekler.
-            text, keep = ln, None
             if len(self.gloss):
-                text, keep, n = self.gloss.rewrite(ln, tgt_lang, domain=domain)
+                text, keep, n = self.gloss.rewrite(text, tgt_lang, domain=domain)
                 if n:
                     self.stats["injected"] += 1
 
@@ -634,6 +696,9 @@ def main():
     ap.add_argument("--inject", action="store_true",
                     help="cümle içi terim enjeksiyonu (ince ayar SONRASI aç; "
                          "ön-eğitilmiş model koruma bölgesine uymuyor)")
+    ap.add_argument("--no-expand", action="store_true",
+                    help="sohbet kısaltmalarını açma (knk -> kanka). "
+                         "Yalnız TR->EN yönünde etkili.")
     ap.add_argument("--no-repair", action="store_true",
                     help="çıktı onarımını kapat (kaçış dizisi + yer tutucu "
                          "geri yazma). Ölçüldü: bozuk yer tutucu 58 -> 10")
@@ -661,7 +726,8 @@ def main():
     tr = Translator(args.ckpt, args.spm, args.device,
                     fp16_store=not args.fp32_store,
                     glossary=args.glossary, use_glossary=not args.no_glossary,
-                    repair=not args.no_repair, inject=args.inject)
+                    repair=not args.no_repair, inject=args.inject,
+                    expand=not args.no_expand)
     print(f"[model] {tr.info['params']/1e6:.1f}M param, adım {tr.info['step']}, "
           f"val {tr.info['best_val']}, sözlük {tr.info['glossary']} terim",
           file=sys.stderr)
